@@ -2,7 +2,7 @@
 function getLowestLocationFromSeeds(almanacString) {
     const almanac = Almanac.fromString(almanacString);
     let minDistance = null;
-    for(const seed of almanac.seeds) {
+    for (const seed of almanac.seeds) {
         const location = almanac.getDistanceFromSeed(seed);
         if (!minDistance || location < minDistance) {
             minDistance = location;
@@ -16,13 +16,13 @@ function getLowestLocationFromRangeOfSeeds(almanacString) {
     let minDistance = null;
     const remainingSeeds = almanac.seeds;
     const seedBlocks = [];
-    while(remainingSeeds.length > 0) {
+    while (remainingSeeds.length > 0) {
         const fromSeed = remainingSeeds.shift();
         const length = remainingSeeds.shift();
         seedBlocks.push([fromSeed, length]);
     }
-    return almanac.getDistanceFromSeedBlock(seedBlocks);
-    return minDistance;
+    const distanceBlocks = almanac.getDistanceFromSeedBlock(seedBlocks);
+    return distanceBlocks.sort(([a], [b]) => a-b)[0][0];
 }
 
 function isSource([source, dest, len], n) {
@@ -40,8 +40,8 @@ class AlmanacMap {
         const almanacMap = new AlmanacMap();
         const maps = string.split("\n")
             .map((s) => s.split(" "))
-            .map(([dest, source, len]) => [+source,+dest,+len])
-            .sort(([a], [b]) => a-b);
+            .map(([dest, source, len]) => [+source, +dest, +len])
+            .sort(([a], [b]) => a - b);
         almanacMap.map = maps;
         return almanacMap;
     }
@@ -62,41 +62,47 @@ class AlmanacMap {
         return n;
     }
 
-    getBlocks(blocks) {
+    getBlocks(block) {
+        let [start, blockLen] = block;
         const mappedBlocks = [];
-        blocks = blocks.sort(([a], [b]) => a-b);
-        for (let [start, blockLen] of blocks) {
-            let m = this.map.shift();
-            let skip = false;
-            while (m && !isSource(m, start)) {
-                if (m[0] >= start && m[0] <= start + blockLen) {
-                    blocks.unshift(
-                        [start, m[0] - start],
-                        [m[0], blockLen - m[0]]
-                    );
-                    skip = true;
-                    break;
-                }
-                if (m[0] >= start + blockLen) {
-                    this.map.unshift(m);
-                    skip = true;
+        for (const [source, dest, len] of this.map) {
+            if (start < source) {
+                if (start + blockLen - 1 < source) {
                     break;
                 } else {
-                    m = this.map.shift();
+                    const remainingLength = source - start;
+                    mappedBlocks.push([
+                        start,
+                        remainingLength,
+                    ]);
+                    start = source;
+                    blockLen = blockLen - remainingLength;
                 }
             }
-            if (skip) continue;
-            if (m) {
-                const [source, dest, len] = m;
-                const remainingLength = blockLen - len;
-                if (remainingLength > 0) {
-                    blocks.unshift([source + len, remainingLength]);
+            if (start >= source && start < source + len) {
+                const remainingLength = len - (start - source);
+                if (remainingLength >= blockLen) {
+                    mappedBlocks.push([
+                        start - source + dest,
+                        blockLen
+                    ]);
+                    blockLen = 0;
+                    break;
+                } else {
+                    mappedBlocks.push([
+                        start - source + dest,
+                        remainingLength,
+                    ]);
+                    start = start + remainingLength;
+                    blockLen = blockLen - remainingLength;
                 }
-                const mappedDest = start - source + dest;
-                mappedBlocks.push([mappedDest, Math.min(blockLen, len)]);
-            } else {
-                mappedBlocks.push([start, blockLen]);
             }
+        }
+        if (blockLen > 0) {
+            mappedBlocks.push([
+                start,
+                blockLen
+            ]);
         }
         return mappedBlocks;
     }
@@ -152,14 +158,14 @@ class Almanac {
     }
     getDistanceFromSeedBlock(blocks) {
         const almanac = this;
-        const soil = almanac.seedToSoil.getBlocks(blocks);
-        const fertilizer = almanac.soilToFertilizer.getBlocks(soil);
-        const water = almanac.fertilizerToWater.getBlocks(fertilizer);
-        const light = almanac.waterToLight.getBlocks(water);
-        const temperature = almanac.lightToTemperature.getBlocks(light);
-        const humidity = almanac.temperatureToHumidity.getBlocks(temperature);
-        const location = almanac.humidityToLocation.getBlocks(humidity);
-        return location;
+        const soilBlocks = blocks.map((b) => almanac.seedToSoil.getBlocks(b)).flat();
+        const fertilizerBlocks = soilBlocks.map((b) => almanac.soilToFertilizer.getBlocks(b)).flat();
+        const waterBlocks = fertilizerBlocks.map((b) => almanac.fertilizerToWater.getBlocks(b)).flat();
+        const lightBlocks = waterBlocks.map((b) => almanac.waterToLight.getBlocks(b)).flat();
+        const temperatureBlocks = lightBlocks.map((b) => almanac.lightToTemperature.getBlocks(b)).flat();
+        const humidityBlocks = temperatureBlocks.map((b) => almanac.temperatureToHumidity.getBlocks(b)).flat();
+        const locationBlocks = humidityBlocks.map((b) => almanac.humidityToLocation.getBlocks(b)).flat();
+        return locationBlocks;
     }
 }
 

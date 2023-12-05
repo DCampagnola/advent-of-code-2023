@@ -113,6 +113,73 @@ describe('Day 5', () => {
                     );
                 });
             });
+
+            describe('getBlocks', () => {
+                const almanacMap = new AlmanacMap([
+                    [50,52,48],
+                    [98,50,2],
+                ]);
+
+                test('return correct blocks given a block with direct mapping', () => {
+                    deepEqual(
+                        almanacMap.getBlocks([0,49]),
+                        [[0,49]]
+                    )
+                });
+
+                test('return correct blocks given a block with direct mapping from upper bound', () => {
+                    deepEqual(
+                        almanacMap.getBlocks([100,145]),
+                        [[100,145]]
+                    )
+                });
+
+                test('return correct blocks given a block with full source dest mapping', () => {
+                    deepEqual(
+                        almanacMap.getBlocks([50,48]),
+                        [[52,48]]
+                    )
+                });
+
+                test('return correct blocks given a block with splitted source dest mapping', () => {
+                    deepEqual(
+                        almanacMap.getBlocks([50,50]),
+                        [[52,48], [50, 2]]
+                    )
+                });
+
+                test('return correct blocks given a block with splitted source dest mapping from lower', () => {
+                    deepEqual(
+                        almanacMap.getBlocks([0,52]),
+                        [[0,50], [52, 2]]
+                    );
+                });
+
+                test('return correct blocks given a block with splitted source dest mapping in the middle', () => {
+
+                    const almanacMap = new AlmanacMap([
+                        [50,52,48],
+                        [100,50,2],
+                    ]);
+
+                    deepEqual(
+                        almanacMap.getBlocks([50,150]),
+                        [[52,48], [98, 2], [50, 2], [102, 98]]
+                    );
+                });
+                test('return correct blocks given the blocks of the exercise against the seedToSoil', () => {
+
+                    const almanacMap = new AlmanacMap([
+                        [50, 52, 48],
+                        [98, 50, 2],
+                    ]);
+
+                    deepEqual(
+                        almanacMap.getBlocks([79,14]),
+                        [[81,14]]
+                    );
+                });
+            })
         });
     });
 
